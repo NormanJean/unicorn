@@ -1,0 +1,55 @@
+version: '2'
+services:
+  flask:
+    build: ./backend
+    #container_name: backend-flask
+    environment:
+      - PYTHONUNBUFFERED=True                    
+    restart: on-failure
+    volumes:
+      - ./backend:/backend
+    expose:
+      - 5000
+    command: gunicorn main:"create_flask_app()" -b 0.0.0.0:5000 --reload
+    deploy:
+      replicas: 3
+    logging:
+      driver: json-file
+    networks:
+      - app-net
+      - frontend-net
+      - db-net
+
+  nginx:
+    build: ./nginx
+    container_name: web-server
+    ports:
+      - "80:80"
+    depends_on:
+      - flask
+    logging:
+      driver: json-file
+    networks:
+      - frontend-net
+  
+  postgres:
+    env_file: ./env-postgresql
+    container_name: postgres_flask_container
+    image: postgres:14
+    volumes:
+      - flaskdb:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      - db-net
+
+volumes:
+  flaskdb:
+
+networks:
+  app-net:
+    driver: bridge
+  db-net:
+    driver: bridge
+  frontend-net:
+    driver: bridge
